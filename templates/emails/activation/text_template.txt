@@ -1,0 +1,17 @@
+Hello {{ username }},
+
+Thanks for creating an account with Kanblast! Before you can start using the app, we need to confirm that this email address belongs to you.
+
+The activation link is valid for only an hour. After that time, you will need to generate a new activation link.
+
+Please click the link below to activate your account. This is a quick, one-time step to keep your account secure.
+
+{{ activation_link }}
+
+Once confirmed, you'll be ready to go.
+
+Best regards,
+Kanblast Team
+
+---
+If you did not create an account, please ignore this email.
