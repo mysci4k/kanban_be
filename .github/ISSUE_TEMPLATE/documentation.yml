@@ -1,0 +1,81 @@
+name: 📚 Documentation Improvement
+description: Suggest improvements to documentation
+title: "[DOCS] "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the documentation!
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs improvement?
+      options:
+        - README
+        - API Documentation (OpenAPI/Scalar)
+        - Code Comments
+        - Architecture Documentation
+        - Contributing Guidelines
+        - Setup/Installation Guide
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: Current Issue
+      description: What's unclear, missing, or incorrect in the current documentation?
+      placeholder: |
+        The current documentation doesn't explain...
+        The setup instructions are unclear about...
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Where is this documentation located?
+      placeholder: |
+        - File: README.md, section "Getting Started"
+        - URL: http://localhost:8080/scalar#/auth
+        - Code: src/application/services/auth_service.rs:45
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+      placeholder: |
+        The documentation should include...
+        Add example showing...
+        Clarify by explaining...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Content
+      description: (Optional) Provide example of improved documentation
+      placeholder: |
+        ```markdown
+        ## Setting up Email Service
+        
+        Configure your SMTP settings in `.env`:
+        ...
+        ```
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: (Optional) Any other relevant information
+      placeholder: Screenshots, links to good documentation examples, etc.

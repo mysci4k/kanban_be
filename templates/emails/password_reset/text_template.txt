@@ -1,0 +1,17 @@
+Hello {{ username }},
+
+We received a request to reset the password for your Kanblast account.
+
+The password reset link is valid for only an hour. After that time, you will need to generate a new password reset link.
+
+If you made this request, please click the button below to reset your password.
+
+{{ reset_link }}
+
+Once you reset your password, you can login with your new credentials.
+
+Best regards,
+Kanblast Team
+
+---
+If you did not request a password reset, please ignore this email or contact support if you have concerns about your account security. Your password will remain unchanged.

@@ -1,0 +1,77 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide details below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe
+      placeholder: I'm frustrated when... / It would be helpful if...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: |
+        I would like to have...
+        This feature should work by...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: (Optional) Have you considered any alternative solutions or features?
+      placeholder: Alternative approaches or workarounds
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Details
+      description: (Optional) Technical details or suggestions for implementation
+      placeholder: |
+        This could be implemented by:
+        1. Adding new field to Task entity
+        2. Creating background job service
+        3. Implementing notification system
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex do you think this feature is?
+      options:
+        - Low (small change, easy to implement)
+        - Medium (moderate change, some effort required)
+        - High (major change, significant effort)
+        - Unknown
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case / Example
+      description: (Optional) Provide a real-world example of how this feature would be used
+      placeholder: |
+        As a team lead, I want to set deadlines for tasks so that
+        team members receive notifications when deadlines approach.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: (Optional) Add any other context, screenshots, or mockups
+      placeholder: Links to similar features in other apps, design mockups, etc.
