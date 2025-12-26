@@ -14,6 +14,7 @@ entity = { path = "entity" }
 migration = { path = "migration" }
 actix-web = "4.11.0"
 actix-ws = "0.3.0"
+actix-cors = "0.7.1"
 actix-session = { version = "0.11.0", features = ["redis-session-rustls"] }
 actix-identity = "0.9.0"
 dotenvy = "0.15.7"
