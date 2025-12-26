@@ -6,15 +6,17 @@ use crate::{
     },
     shared::{
         config::AppState,
-        utils::constants::{REDIS_URL, SESSION_KEY},
+        utils::constants::{BASE_URL, REDIS_URL, SESSION_KEY},
     },
 };
+use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, config::PersistentSession, storage::RedisSessionStore};
 use actix_web::{
     App, HttpResponse, HttpServer, Responder,
     cookie::{Key, time::Duration},
     get,
+    http::header,
     middleware::Logger,
     web,
 };
@@ -48,6 +50,18 @@ pub async fn configure_server(
             .app_data(web::Data::new(app_state.column_service.clone()))
             .app_data(web::Data::new(app_state.task_service.clone()))
             .app_data(web::Data::new(app_state.websocket_service.clone()))
+            .wrap(
+                Cors::default()
+                    .allowed_origin(&BASE_URL)
+                    .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "PATCH"])
+                    .allowed_headers(vec![
+                        header::AUTHORIZATION,
+                        header::ACCEPT,
+                        header::CONTENT_TYPE,
+                    ])
+                    .supports_credentials()
+                    .max_age(3600),
+            )
             .wrap(Logger::default())
             .wrap(RequireAuth)
             .wrap(IdentityMiddleware::default())
