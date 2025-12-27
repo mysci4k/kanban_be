@@ -15,6 +15,7 @@ use utoipa::{
         // Auth endpoints
         crate::presentation::http::auth_controller::register,
         crate::presentation::http::auth_controller::login,
+        crate::presentation::http::auth_controller::renew,
         crate::presentation::http::auth_controller::logout,
         crate::presentation::http::auth_controller::activate,
         crate::presentation::http::auth_controller::resend_activation,
@@ -99,7 +100,7 @@ use utoipa::{
     modifiers(&SecurityAddon),
     info(
         title = "Kanban Board API",
-        version = "0.1.0",
+        version = "0.1.1",
         description = "REST API backend for a Kanban application.",
         license(
             name = "MIT",

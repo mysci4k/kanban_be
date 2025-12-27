@@ -134,7 +134,7 @@ impl EmailService for SmtpEmailService {
         activation_token: &str,
     ) -> Result<(), String> {
         let activation_link = format!(
-            "{}/api/activate?userId={}?token={}",
+            "{}/activate?userId={}&token={}",
             self.base_url, user_id, activation_token
         );
 
@@ -154,7 +154,7 @@ impl EmailService for SmtpEmailService {
         reset_token: &str,
     ) -> Result<(), String> {
         let reset_link = format!(
-            "{}/api/reset-password?userId={}&token={}",
+            "{}/reset-password?userId={}&token={}",
             self.base_url, user_id, reset_token
         );
 
