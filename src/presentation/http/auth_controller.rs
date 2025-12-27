@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::{HttpMessage, HttpRequest, post, web};
 use std::sync::Arc;
 
@@ -20,6 +21,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         web::scope("/auth")
             .service(register)
             .service(login)
+            .service(renew)
             .service(logout)
             .service(activate)
             .service(resend_activation)
@@ -85,6 +87,29 @@ async fn login(
     Ok(ApiResponse::Ok {
         message: "User logged in successfully. Session cookie has been set".to_string(),
         data: Some(user),
+    })
+}
+
+#[utoipa::path(
+    post,
+    description = "***PROTECTED ENDPOINT***\n\nRenews the current user session by extending the session expiration time. The session cookie's validity is refreshed, allowing the user to remain logged in without re-authenticating.",
+    path = "/auth/renew",
+    responses(
+        (status = 200, description = "OK - Session renewed successfully", body = ApiResponseSchema<String>),
+        (status = 401, description = "Unauthorized - No active session or session has expired", body = ApplicationErrorSchema)
+    ),
+    tag = "Authentication",
+    security(
+        ("session_cookie" = [])
+    )
+)]
+#[post("/renew")]
+async fn renew(session: Session) -> Result<ApiResponse<String>, ApplicationError> {
+    session.renew();
+
+    Ok(ApiResponse::Ok {
+        message: "Session renewed successfully".to_string(),
+        data: None,
     })
 }
 

@@ -15,6 +15,7 @@ use utoipa::{
         // Auth endpoints
         crate::presentation::http::auth_controller::register,
         crate::presentation::http::auth_controller::login,
+        crate::presentation::http::auth_controller::renew,
         crate::presentation::http::auth_controller::logout,
         crate::presentation::http::auth_controller::activate,
         crate::presentation::http::auth_controller::resend_activation,
