@@ -1,6 +1,6 @@
 [package]
 name = "kanban_be"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "REST API backend for a Kanban application"
 repository = "https://github.com/mysci4k/kanban_be"
