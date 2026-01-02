@@ -18,8 +18,14 @@ actix-cors = "0.7.1"
 actix-session = { version = "0.11.0", features = ["redis-session-rustls"] }
 actix-identity = "0.9.0"
 dotenvy = "0.15.7"
-tracing = "0.1.41"
-tracing-subscriber = "0.3.20"
+tracing = "0.1.44"
+tracing-subscriber = "0.3.22"
+tracing-actix-web = { version = "0.7.20", features = ["uuid_v7", "opentelemetry_0_31"] }
+tracing-opentelemetry = "0.32.0"
+opentelemetry = "0.31.0"
+opentelemetry_sdk = { version = "0.31.0", features = ["trace", "rt-tokio"] }
+opentelemetry-otlp = { version = "0.31.0", features = ["trace", "grpc-tonic"] }
+opentelemetry-semantic-conventions = "0.31.0"
 sea-orm = { version = "1.1.17", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 sea-query = "0.32.7"
 uuid = { version = "1.18.1", features = ["serde", "v7"] }

@@ -8,26 +8,21 @@ use crate::{
     presentation::http::configure_server,
     shared::{
         config::{
-            initialize_event_bus, initialize_infrastructure, initialize_repositories,
-            initialize_services,
+            TracingConfig, init_tracing, initialize_event_bus, initialize_infrastructure,
+            initialize_repositories, initialize_services,
         },
         utils::constants::{SERVER_ADDRESS, SERVER_PORT},
     },
 };
 use dotenvy::dotenv;
 use std::io::Result;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
     dotenv().ok();
 
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set global default subscriber");
+    let tracing_config = TracingConfig::from_env();
+    let _tracing_guard = init_tracing(tracing_config);
 
     let (database, redis_client) = initialize_infrastructure()
         .await

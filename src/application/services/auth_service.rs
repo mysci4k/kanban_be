@@ -8,6 +8,7 @@ use crate::{
 };
 use actix_web::rt::task;
 use std::sync::Arc;
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -30,10 +31,17 @@ impl AuthService {
         }
     }
 
+    #[instrument(
+        name = "auth.register",
+        skip(self, dto),
+        fields(user.email = %dto.email),
+        err
+    )]
     pub async fn register(&self, dto: CreateUserDto) -> Result<UserDto, ApplicationError> {
         dto.validate()?;
 
         if self.user_repository.exists_by_email(&dto.email).await? {
+            warn!(user.email = %dto.email, "Attempt to register with an existing email");
             return Err(ApplicationError::Conflict {
                 message: "User with this email address already exists".to_string(),
             });
@@ -79,9 +87,16 @@ impl AuthService {
                 message: "Failed to send activation email".to_string(),
             })?;
 
+        info!(user.id = %saved_user.id, "User registered successfully");
         Ok(UserDto::from_domain(saved_user))
     }
 
+    #[instrument(
+        name = "auth.login",
+        skip(self, dto),
+        fields(user.email = %dto.email),
+        err
+    )]
     pub async fn login(&self, dto: LoginDto) -> Result<UserDto, ApplicationError> {
         dto.validate()?;
 
@@ -89,8 +104,11 @@ impl AuthService {
             .user_repository
             .find_by_email(&dto.email)
             .await?
-            .ok_or_else(|| ApplicationError::Unauthorized {
-                message: "Invalid credentials".to_string(),
+            .ok_or_else(|| {
+                warn!(user.email = %dto.email, "Attempt to login with invalid credentials");
+                ApplicationError::Unauthorized {
+                    message: "Invalid credentials".to_string(),
+                }
             })?;
 
         let password_valid = task::spawn_blocking({
@@ -106,20 +124,29 @@ impl AuthService {
         })?;
 
         if !password_valid {
+            warn!(user.id = %user.id, "Attempt to login with invalid credentials");
             return Err(ApplicationError::Unauthorized {
                 message: "Invalid credentials".to_string(),
             });
         }
 
         if !user.is_active {
+            warn!(user.id = %user.id, "Attempt to login to an inactive account");
             return Err(ApplicationError::Forbidden {
                 message: "Account is not activated. Please check your email for the activation link or request a new activation email".to_string(),
             });
         }
 
+        info!(user.id = %user.id, "User logged in successfully");
         Ok(UserDto::from_domain(user))
     }
 
+    #[instrument(
+        name = "auth.activate_user",
+        skip(self, user_id, activation_token),
+        fields(user.id = %user_id),
+        err
+    )]
     pub async fn activate_user(
         &self,
         user_id: String,
@@ -134,6 +161,7 @@ impl AuthService {
             })?;
 
         if !is_valid {
+            warn!(user.id = %user_id, "Invalid or expired activation token provided");
             return Err(ApplicationError::BadRequest {
                 message: "Invalid or expired activation token".to_string(),
             });
@@ -152,9 +180,16 @@ impl AuthService {
                 message: "Failed to delete activation token".to_string(),
             })?;
 
+        info!(user.id = %user_id, "User account activated successfully");
         Ok(UserDto::from_domain(activated_user))
     }
 
+    #[instrument(
+        name = "auth.resend_activation_email",
+        skip(self, email),
+        fields(user.email = %email),
+        err
+    )]
     pub async fn resend_activation_email(&self, email: String) -> Result<(), ApplicationError> {
         let user = self
             .user_repository
@@ -165,6 +200,7 @@ impl AuthService {
             })?;
 
         if user.is_active {
+            warn!(user.id = %user.id, "Attempt to resend activation email for an already activated account");
             return Err(ApplicationError::Conflict {
                 message: "Account is already activated".to_string(),
             });
@@ -179,6 +215,7 @@ impl AuthService {
             })?;
 
         if has_token {
+            warn!(user.id = %user.id, "Attempt to resend activation email while an active token exists");
             return Err(ApplicationError::TooManyRequests {
                 message: "An activation email was already sent. Please check your inbox or wait for the token to expire".to_string(),
             });
@@ -205,9 +242,16 @@ impl AuthService {
                 message: "Failed to send activation email".to_string(),
             })?;
 
+        info!(user.id = %user.id, "Activation email resent successfully");
         Ok(())
     }
 
+    #[instrument(
+        name = "auth.forgot_password",
+        skip(self, email),
+        fields(user.email = %email),
+        err
+    )]
     pub async fn forgot_password(&self, email: String) -> Result<(), ApplicationError> {
         let user = self
             .user_repository
@@ -218,6 +262,7 @@ impl AuthService {
             })?;
 
         if !user.is_active {
+            warn!(user.id = %user.id, "Attempt to reset password for an inactive account");
             return Err(ApplicationError::Unauthorized {
                 message: "Account is not activated. Please activate your account first".to_string(),
             });
@@ -232,6 +277,7 @@ impl AuthService {
             })?;
 
         if has_token {
+            warn!(user.id = %user.id, "Attempt to send password reset email while an active token exists");
             return Err(ApplicationError::TooManyRequests {
                 message: "A password reset email was already sent. Please check your inbox or wait for the token to expire".to_string(),
             });
@@ -253,9 +299,16 @@ impl AuthService {
                 message: "Failed to send password reset email".to_string(),
             })?;
 
+        info!(user.id = %user.id, "Password reset email sent successfully");
         Ok(())
     }
 
+    #[instrument(
+        name = "auth.reset_password",
+        skip(self, dto),
+        fields(user.id = %dto.user_id),
+        err
+    )]
     pub async fn reset_password(&self, dto: ResetPasswordDto) -> Result<(), ApplicationError> {
         dto.validate()?;
 
@@ -268,6 +321,7 @@ impl AuthService {
             })?;
 
         if !is_valid {
+            warn!(user.id = %dto.user_id, "Invalid or expired password reset token provided");
             return Err(ApplicationError::BadRequest {
                 message: "Invalid or expired reset token".to_string(),
             });
@@ -297,6 +351,7 @@ impl AuthService {
                 message: "Failed to delete password reset token".to_string(),
             })?;
 
+        info!(user.id = %user_id, "Password reset successfully");
         Ok(())
     }
 }

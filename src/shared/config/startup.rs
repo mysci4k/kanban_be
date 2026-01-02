@@ -24,18 +24,18 @@ use crate::{
 use redis::Client as RedisClient;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{error, info};
 
 pub async fn initialize_infrastructure()
 -> Result<(DatabaseConnection, RedisClient), Box<dyn std::error::Error>> {
     let database = database::run().await.map_err(|err| {
-        eprintln!("Failed to connect to the database: {}", err);
+        error!(error = %err, "Failed to connect to the PostgreSQL database");
         err
     })?;
     info!("Successfully connected to the PostgreSQL database");
 
     let redis_client = RedisClient::open(REDIS_URL.as_str()).map_err(|err| {
-        eprintln!("Failed to create Redis client: {}", err);
+        error!(error = %err, "Failed to create Redis client");
         err
     })?;
     info!("Successfully connected to the Redis server");
@@ -62,7 +62,7 @@ pub fn initialize_repositories(database: DatabaseConnection) -> Repositories {
         Arc::new(SeaOrmColumnRepository::new(database.clone())) as Arc<dyn ColumnRepository>;
     let task_repository = Arc::new(SeaOrmTaskRepository::new(database)) as Arc<dyn TaskRepository>;
 
-    info!("Successfully initialized repositories");
+    info!("Successfully initialized all repositories");
 
     (
         user_repository,
@@ -120,7 +120,7 @@ pub fn initialize_services(
     ));
     let websocket_service = Arc::new(WebSocketService::new(event_bus, board_member_repository));
 
-    info!("Successfully initialized services");
+    info!("Successfully initialized all services");
 
     AppState::new(
         auth_service,
