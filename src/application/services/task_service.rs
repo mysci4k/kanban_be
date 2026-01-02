@@ -11,6 +11,7 @@ use crate::{
 };
 use chrono::Utc;
 use std::sync::Arc;
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -36,6 +37,15 @@ impl TaskService {
         }
     }
 
+    #[instrument(
+        name = "task.create_task",
+        skip(self, dto, user_id),
+        fields(
+            column.id = %dto.column_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn create_task(
         &self,
         dto: CreateTaskDto,
@@ -57,6 +67,11 @@ impl TaskService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %column.board_id,
+                user.id = %user_id,
+                "Attempt to create task without access to the board"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
@@ -107,9 +122,19 @@ impl TaskService {
             )
             .await;
 
+        info!(task.id = %saved_task.id, "Task created successfully");
         Ok(TaskDto::from_domain(saved_task))
     }
 
+    #[instrument(
+        name = "task.get_task_by_id",
+        skip(self, task_id, user_id),
+        fields(
+            task.id = %task_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn get_task_by_id(
         &self,
         task_id: Uuid,
@@ -137,14 +162,29 @@ impl TaskService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %column.board_id,
+                user.id = %user_id,
+                "Attempt to access task without access to the board"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
         }
 
+        info!(task.id = %task.id, "Task retrieved successfully");
         Ok(TaskDto::from_domain(task))
     }
 
+    #[instrument(
+        name = "task.get_column_tasks",
+        skip(self, column_id, user_id),
+        fields(
+            column.id = %column_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn get_column_tasks(
         &self,
         column_id: Uuid,
@@ -164,6 +204,11 @@ impl TaskService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %column.board_id,
+                user.id = %user_id,
+                "Attempt to access tasks without access to the board"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
@@ -173,9 +218,19 @@ impl TaskService {
 
         tasks.sort_by(|a, b| a.position.cmp(&b.position));
 
+        info!(task.count = %tasks.len(), "Column tasks retrieved successfully");
         Ok(tasks.into_iter().map(TaskDto::from_domain).collect())
     }
 
+    #[instrument(
+        name = "task.update_task",
+        skip(self, dto, task_id, user_id),
+        fields(
+            task.id = %task_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn update_task(
         &self,
         dto: UpdateTaskDto,
@@ -206,6 +261,11 @@ impl TaskService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %column.board_id,
+                user.id = %user_id,
+                "Attempt to update task without access to the board"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
@@ -238,9 +298,19 @@ impl TaskService {
             )
             .await;
 
+        info!(task.id = %task_id, "Task updated successfully");
         Ok(TaskDto::from_domain(updated_task))
     }
 
+    #[instrument(
+        name = "task.move_task",
+        skip(self, target_position, task_id, column_id, user_id),
+        fields(
+            task.id = %task_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn move_task(
         &self,
         target_position: usize,
@@ -273,6 +343,10 @@ impl TaskService {
             })?;
 
         if old_column.board_id != new_column.board_id {
+            warn!(
+                task.id = %task_id,
+                "Attempt to move task between columns of different boards"
+            );
             return Err(ApplicationError::BadRequest {
                 message: "Cannot move task between columns of different boards".to_string(),
             });
@@ -284,6 +358,11 @@ impl TaskService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %old_column.board_id,
+                user.id = %user_id,
+                "Attempt to move task without access to the board"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
@@ -345,9 +424,19 @@ impl TaskService {
             )
             .await;
 
+        info!(task.id = %task_id, "Task moved successfully");
         Ok(TaskDto::from_domain(saved_task))
     }
 
+    #[instrument(
+        name = "task.delete_task",
+        skip(self, task_id, user_id),
+        fields(
+            task.id = %task_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn delete_task(&self, task_id: Uuid, user_id: Uuid) -> Result<u64, ApplicationError> {
         let task = self
             .task_repository
@@ -371,6 +460,11 @@ impl TaskService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %column.board_id,
+                user.id = %user_id,
+                "Attempt to delete task without access to the board"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
@@ -389,6 +483,7 @@ impl TaskService {
             )
             .await;
 
+        info!(task.id = %task_id, "Task deleted successfully");
         Ok(deleted_column)
     }
 }
