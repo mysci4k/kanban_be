@@ -5,7 +5,7 @@ use crate::{
         middleware::RequireAuth,
     },
     shared::{
-        config::AppState,
+        config::{AppState, CustomRootSpanBuilder},
         utils::constants::{BASE_URL, REDIS_URL, SESSION_KEY},
     },
 };
@@ -17,10 +17,10 @@ use actix_web::{
     cookie::{Key, time::Duration},
     get,
     http::header,
-    middleware::Logger,
     web,
 };
 use std::io::Result;
+use tracing_actix_web::TracingLogger;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 
@@ -62,7 +62,7 @@ pub async fn configure_server(
                     .supports_credentials()
                     .max_age(3600),
             )
-            .wrap(Logger::default())
+            .wrap(TracingLogger::<CustomRootSpanBuilder>::new())
             .wrap(RequireAuth)
             .wrap(IdentityMiddleware::default())
             .wrap(
