@@ -1,6 +1,7 @@
 use chrono::{DateTime, FixedOffset};
 use entity::BoardMemberRoleEnum;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,4 +160,27 @@ pub struct TaskDeletedEvent {
     pub task_id: Uuid,
     pub deleted_by: Uuid,
     pub timestamp: DateTime<FixedOffset>,
+}
+
+impl fmt::Display for BoardEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let event = match self {
+            BoardEvent::BoardCreated(_) => "BoardCreated",
+            BoardEvent::BoardUpdated(_) => "BoardUpdated",
+            BoardEvent::BoardDeleted(_) => "BoardDeleted",
+            BoardEvent::MemberAdded(_) => "MemberAdded",
+            BoardEvent::MemberRoleChanged(_) => "MemberRoleChanged",
+            BoardEvent::MemberRemoved(_) => "MemberRemoved",
+            BoardEvent::ColumnCreated(_) => "ColumnCreated",
+            BoardEvent::ColumnUpdated(_) => "ColumnUpdated",
+            BoardEvent::ColumnMoved(_) => "ColumnMoved",
+            BoardEvent::ColumnDeleted(_) => "ColumnDeleted",
+            BoardEvent::TaskCreated(_) => "TaskCreated",
+            BoardEvent::TaskUpdated(_) => "TaskUpdated",
+            BoardEvent::TaskMoved(_) => "TaskMoved",
+            BoardEvent::TaskDeleted(_) => "TaskDeleted",
+        };
+
+        write!(f, "{}", event)
+    }
 }
