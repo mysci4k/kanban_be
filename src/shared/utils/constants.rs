@@ -55,6 +55,20 @@ pub static FROM_EMAIL: LazyLock<String> =
 pub static BASE_URL: LazyLock<String> =
     LazyLock::new(|| env::var("BASE_URL").expect("Missing BASE_URL environment variable"));
 
+// Tracing configuration constants
+pub static OTLP_ENDPOINT: LazyLock<Option<String>> =
+    LazyLock::new(|| env::var("OTLP_ENDPOINT").ok());
+
+pub static OTLP_SERVICE_NAME: LazyLock<String> =
+    LazyLock::new(|| env::var("OTLP_SERVICE_NAME").unwrap_or("kanban_api".to_string()));
+
+pub static OTLP_SAMPLING_RATIO: LazyLock<f64> = LazyLock::new(|| {
+    env::var("OTLP_SAMPLING_RATIO")
+        .unwrap_or("1.0".to_string())
+        .parse()
+        .expect("SAMPLING_RATIO must be a valid f64 number")
+});
+
 // Regular expressions for validation
 pub static RE_ONLY_LETTERS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\p{L}+$").unwrap());
 
