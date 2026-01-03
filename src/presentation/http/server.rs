@@ -38,7 +38,12 @@ pub async fn configure_server(
         .await
         .expect("Failed to connect to Redis for session storage");
 
-    let session_key = Key::from(SESSION_KEY.as_bytes());
+    let session_key_bytes = SESSION_KEY.as_bytes();
+    if session_key_bytes.len() < 64 {
+        panic!("SESSION_KEY must be at least 64 bytes long");
+    }
+
+    let session_key = Key::from(session_key_bytes);
 
     let openapi = ApiDoc::openapi();
 
