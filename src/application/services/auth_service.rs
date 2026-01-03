@@ -191,19 +191,17 @@ impl AuthService {
         err
     )]
     pub async fn resend_activation_email(&self, email: String) -> Result<(), ApplicationError> {
-        let user = self
-            .user_repository
-            .find_by_email(&email)
-            .await?
-            .ok_or_else(|| ApplicationError::NotFound {
-                message: "User with the given email address not found".to_string(),
-            })?;
+        let user = match self.user_repository.find_by_email(&email).await? {
+            Some(user) => user,
+            None => {
+                warn!(user.email = %email, "Attempt to resend activation email for non-existent email address");
+                return Ok(());
+            }
+        };
 
         if user.is_active {
             warn!(user.id = %user.id, "Attempt to resend activation email for an already activated account");
-            return Err(ApplicationError::Conflict {
-                message: "Account is already activated".to_string(),
-            });
+            return Ok(());
         }
 
         let has_token = self
@@ -253,19 +251,17 @@ impl AuthService {
         err
     )]
     pub async fn forgot_password(&self, email: String) -> Result<(), ApplicationError> {
-        let user = self
-            .user_repository
-            .find_by_email(&email)
-            .await?
-            .ok_or_else(|| ApplicationError::NotFound {
-                message: "User with the given email address not found".to_string(),
-            })?;
+        let user = match self.user_repository.find_by_email(&email).await? {
+            Some(user) => user,
+            None => {
+                warn!(user.email = %email, "Attempt to reset password for non-existent email address");
+                return Ok(());
+            }
+        };
 
         if !user.is_active {
             warn!(user.id = %user.id, "Attempt to reset password for an inactive account");
-            return Err(ApplicationError::Unauthorized {
-                message: "Account is not activated. Please activate your account first".to_string(),
-            });
+            return Ok(());
         }
 
         let has_token = self
