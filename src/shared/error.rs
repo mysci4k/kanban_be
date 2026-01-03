@@ -62,7 +62,7 @@ impl ApplicationError {
             ApplicationError::TooManyRequests { message } => message.to_owned(),
             ApplicationError::InternalError { message } => message.to_owned(),
             ApplicationError::ValidationError { message } => message.to_string(),
-            ApplicationError::DatabaseError(err) => err.to_string(),
+            ApplicationError::DatabaseError(_) => "An internal database error occurred".to_string(),
         }
     }
 }
