@@ -12,7 +12,7 @@ pub fn hash_password(password: String) -> Result<String, Error> {
     let password_hash = Argon2::new(
         Algorithm::Argon2id,
         Version::V0x13,
-        Params::new(15000, 2, 1, None).unwrap(),
+        Params::new(19456, 2, 1, None).unwrap(),
     )
     .hash_password(password.as_bytes(), &salt)?
     .to_string();
