@@ -236,7 +236,7 @@ async fn delete_column(
     column_service: web::Data<Arc<ColumnService>>,
     column_id: web::Path<Uuid>,
     user_id: web::ReqData<Uuid>,
-) -> Result<ApiResponse<()>, ApplicationError> {
+) -> Result<ApiResponse<u64>, ApplicationError> {
     let column_id = column_id.into_inner();
     let user_id = user_id.into_inner();
     let rows_affected = column_service.delete_column(column_id, user_id).await?;

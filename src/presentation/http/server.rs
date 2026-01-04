@@ -6,7 +6,7 @@ use crate::{
     },
     shared::{
         config::{AppState, CustomRootSpanBuilder},
-        utils::constants::{BASE_URL, REDIS_URL, SESSION_KEY},
+        utils::constants::{BASE_URL, ENABLED_SCALAR, REDIS_URL, SESSION_KEY},
     },
 };
 use actix_cors::Cors;
@@ -14,7 +14,7 @@ use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, config::PersistentSession, storage::RedisSessionStore};
 use actix_web::{
     App, HttpResponse, HttpServer, Responder,
-    cookie::{Key, time::Duration},
+    cookie::{Key, SameSite, time::Duration},
     get,
     http::header,
     web,
@@ -38,12 +38,17 @@ pub async fn configure_server(
         .await
         .expect("Failed to connect to Redis for session storage");
 
-    let session_key = Key::from(SESSION_KEY.as_bytes());
+    let session_key_bytes = SESSION_KEY.as_bytes();
+    if session_key_bytes.len() < 64 {
+        panic!("SESSION_KEY must be at least 64 bytes long");
+    }
+
+    let session_key = Key::from(session_key_bytes);
 
     let openapi = ApiDoc::openapi();
 
     let server = HttpServer::new(move || {
-        App::new()
+        let mut app = App::new()
             .app_data(web::Data::new(app_state.auth_service.clone()))
             .app_data(web::Data::new(app_state.user_service.clone()))
             .app_data(web::Data::new(app_state.board_service.clone()))
@@ -69,19 +74,26 @@ pub async fn configure_server(
                 SessionMiddleware::builder(redis_store.clone(), session_key.clone())
                     .session_lifecycle(PersistentSession::default().session_ttl(Duration::days(1)))
                     .cookie_name("user-session".to_string())
+                    .cookie_same_site(SameSite::Lax)
+                    .cookie_http_only(true)
+                    .cookie_secure(true)
                     .build(),
-            )
-            .service(Scalar::with_url("/scalar", openapi.clone()))
-            .service(
-                web::scope("/api")
-                    .service(health_check)
-                    .configure(configure_auth_roures)
-                    .configure(configure_user_routes)
-                    .configure(configure_board_routes)
-                    .configure(configure_column_routes)
-                    .configure(configure_task_routes)
-                    .configure(configure_websocket_routes),
-            )
+            );
+
+        if *ENABLED_SCALAR {
+            app = app.service(Scalar::with_url("/scalar", openapi.clone()));
+        }
+
+        app.service(
+            web::scope("/api")
+                .service(health_check)
+                .configure(configure_auth_roures)
+                .configure(configure_user_routes)
+                .configure(configure_board_routes)
+                .configure(configure_column_routes)
+                .configure(configure_task_routes)
+                .configure(configure_websocket_routes),
+        )
     })
     .bind((server_address, server_port))?;
 

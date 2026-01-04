@@ -3,6 +3,7 @@ use crate::shared::utils::constants::{ACTIVATION_TOKEN_TTL, PASSWORD_RESET_TOKEN
 use async_trait::async_trait;
 use redis::Client as RedisClient;
 use redis::{AsyncTypedCommands, RedisError};
+use subtle::ConstantTimeEq;
 use tracing::{debug, error, instrument};
 
 pub struct RedisTokenService {
@@ -90,7 +91,12 @@ impl TokenService for RedisTokenService {
             format!("Failed to get token: {}", err)
         })?;
 
-        Ok(stored_token.as_deref() == Some(activation_token))
+        let is_valid = stored_token
+            .as_ref()
+            .map(|stored| stored.as_bytes().ct_eq(activation_token.as_bytes()).into())
+            .unwrap_or(false);
+
+        Ok(is_valid)
     }
 
     #[instrument(
@@ -215,7 +221,12 @@ impl TokenService for RedisTokenService {
             format!("Failed to get token: {}", err)
         })?;
 
-        Ok(stored_token.as_deref() == Some(reset_token))
+        let is_valid = stored_token
+            .as_ref()
+            .map(|stored| stored.as_bytes().ct_eq(reset_token.as_bytes()).into())
+            .unwrap_or(false);
+
+        Ok(is_valid)
     }
 
     #[instrument(

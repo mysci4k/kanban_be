@@ -1,6 +1,6 @@
 use crate::{
     domain::repositories::User,
-    shared::utils::constants::{RE_ONLY_LETTERS, RE_SPECIAL_CHARS},
+    shared::utils::{constants::RE_ONLY_LETTERS, password_validator::validate_password_strength},
 };
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
@@ -21,15 +21,12 @@ pub struct CreateUserDto {
     )]
     pub email: String,
     #[validate(
-        regex(
-            path = RE_SPECIAL_CHARS,
-            message = "Password must contain at least one special character"
-        ),
         length(
             min = 8,
             max = 50,
             message = "Password must be between 8 and 50 characters long"
-        )
+        ),
+        custom(function = validate_password_strength)
     )]
     pub password: String,
     #[validate(
