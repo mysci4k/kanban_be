@@ -71,6 +71,3 @@ pub static OTLP_SAMPLING_RATIO: LazyLock<f64> = LazyLock::new(|| {
 
 // Regular expressions for validation
 pub static RE_ONLY_LETTERS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\p{L}+$").unwrap());
-
-pub static RE_SPECIAL_CHARS: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^.*?[@$!%*?&].*$").unwrap());
