@@ -24,6 +24,7 @@ services:
     image: redis:8
     container_name: redis_cache
     restart: unless-stopped
+    command: redis-server --requirepass redis
     ports:
       - "6379:6379"
     networks:
@@ -33,6 +34,20 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+
+  jaeger:
+    image: jaegertracing/jaeger:2.13.0
+    container_name: jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_GRPC_HOST_PORT=0.0.0.0:4317
+      - COLLECTOR_OTLP_HTTP_HOST_PORT=0.0.0.0:4318
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "16686:16686"
+    networks:
+      - network
 
 networks:
   network:
