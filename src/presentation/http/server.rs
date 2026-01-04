@@ -14,7 +14,7 @@ use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, config::PersistentSession, storage::RedisSessionStore};
 use actix_web::{
     App, HttpResponse, HttpServer, Responder,
-    cookie::{Key, time::Duration},
+    cookie::{Key, SameSite, time::Duration},
     get,
     http::header,
     web,
@@ -74,6 +74,9 @@ pub async fn configure_server(
                 SessionMiddleware::builder(redis_store.clone(), session_key.clone())
                     .session_lifecycle(PersistentSession::default().session_ttl(Duration::days(1)))
                     .cookie_name("user-session".to_string())
+                    .cookie_same_site(SameSite::Lax)
+                    .cookie_http_only(true)
+                    .cookie_secure(true)
                     .build(),
             )
             .service(Scalar::with_url("/scalar", openapi.clone()))
