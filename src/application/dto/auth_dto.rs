@@ -1,4 +1,4 @@
-use crate::shared::utils::constants::RE_SPECIAL_CHARS;
+use crate::shared::utils::password_validator::validate_password_strength;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -43,15 +43,12 @@ pub struct ResetPasswordDto {
     #[validate(length(min = 1, message = "Reset token is required"))]
     pub reset_token: String,
     #[validate(
-        regex(
-            path = RE_SPECIAL_CHARS,
-            message = "Password must contain at least one special character"
-        ),
         length(
             min = 8,
             max = 50,
             message = "Password must be between 8 and 50 characters long"
-        )
+        ),
+        custom(function = validate_password_strength)
     )]
     pub new_password: String,
 }
