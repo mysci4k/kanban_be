@@ -6,7 +6,7 @@ use crate::{
     },
     shared::{
         config::{AppState, CustomRootSpanBuilder},
-        utils::constants::{BASE_URL, REDIS_URL, SESSION_KEY},
+        utils::constants::{BASE_URL, ENABLED_SCALAR, REDIS_URL, SESSION_KEY},
     },
 };
 use actix_cors::Cors;
@@ -48,7 +48,7 @@ pub async fn configure_server(
     let openapi = ApiDoc::openapi();
 
     let server = HttpServer::new(move || {
-        App::new()
+        let mut app = App::new()
             .app_data(web::Data::new(app_state.auth_service.clone()))
             .app_data(web::Data::new(app_state.user_service.clone()))
             .app_data(web::Data::new(app_state.board_service.clone()))
@@ -78,18 +78,22 @@ pub async fn configure_server(
                     .cookie_http_only(true)
                     .cookie_secure(true)
                     .build(),
-            )
-            .service(Scalar::with_url("/scalar", openapi.clone()))
-            .service(
-                web::scope("/api")
-                    .service(health_check)
-                    .configure(configure_auth_roures)
-                    .configure(configure_user_routes)
-                    .configure(configure_board_routes)
-                    .configure(configure_column_routes)
-                    .configure(configure_task_routes)
-                    .configure(configure_websocket_routes),
-            )
+            );
+
+        if *ENABLED_SCALAR {
+            app = app.service(Scalar::with_url("/scalar", openapi.clone()));
+        }
+
+        app.service(
+            web::scope("/api")
+                .service(health_check)
+                .configure(configure_auth_roures)
+                .configure(configure_user_routes)
+                .configure(configure_board_routes)
+                .configure(configure_column_routes)
+                .configure(configure_task_routes)
+                .configure(configure_websocket_routes),
+        )
     })
     .bind((server_address, server_port))?;
 
