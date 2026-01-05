@@ -59,8 +59,6 @@ impl BoardService {
         let board_id = Uuid::now_v7();
         let board = Board::new(board_id, dto.name, dto.description, owner_id);
 
-        let saved_board = self.board_repository.create(board).await?;
-
         let board_member = BoardMember::new(
             Uuid::now_v7(),
             board_id,
@@ -68,7 +66,10 @@ impl BoardService {
             BoardMemberRoleEnum::Owner,
         );
 
-        self.board_member_repository.create(board_member).await?;
+        let saved_board = self
+            .board_repository
+            .create_with_member(board, board_member)
+            .await?;
 
         self.event_bus
             .publish(

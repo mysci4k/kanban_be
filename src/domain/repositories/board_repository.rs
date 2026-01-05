@@ -1,4 +1,4 @@
-use crate::shared::error::ApplicationError;
+use crate::{domain::repositories::BoardMember, shared::error::ApplicationError};
 use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset, Utc};
 use uuid::Uuid;
@@ -30,7 +30,11 @@ impl Board {
 
 #[async_trait]
 pub trait BoardRepository: Send + Sync {
-    async fn create(&self, board: Board) -> Result<Board, ApplicationError>;
+    async fn create_with_member(
+        &self,
+        board: Board,
+        board_member: BoardMember,
+    ) -> Result<Board, ApplicationError>;
     async fn find_by_id(
         &self,
         board_id: Uuid,
