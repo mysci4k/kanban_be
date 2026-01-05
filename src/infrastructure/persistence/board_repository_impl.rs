@@ -1,12 +1,15 @@
 use crate::{
-    domain::repositories::{Board, BoardRepository},
+    domain::repositories::{Board, BoardMember, BoardRepository},
     shared::error::ApplicationError,
 };
 use async_trait::async_trait;
-use entity::{BoardActiveModel, BoardEntity, BoardMemberColumn, BoardModel, BoardRelation};
+use entity::{
+    BoardActiveModel, BoardEntity, BoardMemberActiveModel, BoardMemberColumn, BoardMemberEntity,
+    BoardModel, BoardRelation,
+};
 use sea_orm::{
     ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter,
-    QuerySelect, RelationTrait,
+    QuerySelect, RelationTrait, TransactionTrait,
 };
 use tracing::{debug, error, instrument};
 use uuid::Uuid;
@@ -41,30 +44,64 @@ impl SeaOrmBoardRepository {
             updated_at: Set(board.updated_at),
         }
     }
+
+    fn to_board_member_active_model(board_member: BoardMember) -> BoardMemberActiveModel {
+        BoardMemberActiveModel {
+            id: Set(board_member.id),
+            board_id: Set(board_member.board_id),
+            user_id: Set(board_member.user_id),
+            role: Set(board_member.role),
+            created_at: Set(board_member.created_at),
+            updated_at: Set(board_member.updated_at),
+        }
+    }
 }
 
 #[async_trait]
 impl BoardRepository for SeaOrmBoardRepository {
     #[instrument(
-        name = "db.board.create",
-        skip(self, board),
+        name = "db.board.create_with_member",
+        skip(self, board, board_member),
         fields(
             db.operation = "insert",
             board.id = %board.id
         ),
         err
     )]
-    async fn create(&self, board: Board) -> Result<Board, ApplicationError> {
-        debug!("Creating board");
-        let active_model = Self::to_active_model(board);
+    async fn create_with_member(
+        &self,
+        board: Board,
+        board_member: BoardMember,
+    ) -> Result<Board, ApplicationError> {
+        debug!("Creating board with board member");
+        let board_active_model = Self::to_active_model(board);
+        let board_member_active_model = Self::to_board_member_active_model(board_member);
 
-        let result = BoardEntity::insert(active_model)
-            .exec_with_returning(&self.db)
+        let txn = self.db.begin().await.map_err(|err| {
+            error!(error = %err, "Failed to begin transaction");
+            ApplicationError::DatabaseError(err)
+        })?;
+
+        let result = BoardEntity::insert(board_active_model)
+            .exec_with_returning(&txn)
             .await
             .map_err(|err| {
                 error!(error = %err, "Failed to create board");
                 ApplicationError::DatabaseError(err)
             })?;
+
+        BoardMemberEntity::insert(board_member_active_model)
+            .exec(&txn)
+            .await
+            .map_err(|err| {
+                error!(error = %err, "Failed to create board member");
+                ApplicationError::DatabaseError(err)
+            })?;
+
+        txn.commit().await.map_err(|err| {
+            error!(error = %err, "Failed to commit transaction");
+            ApplicationError::DatabaseError(err)
+        })?;
 
         Ok(Self::to_domain(result))
     }
