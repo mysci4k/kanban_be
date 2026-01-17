@@ -3,8 +3,11 @@ use crate::{
     shared::error::ApplicationError,
 };
 use async_trait::async_trait;
-use entity::{TaskActiveModel, TaskColumn, TaskEntity, TaskModel};
-use sea_orm::{ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use entity::{ColumnColumn, TaskActiveModel, TaskColumn, TaskEntity, TaskModel, TaskRelation};
+use sea_orm::{
+    ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter,
+    QuerySelect, RelationTrait,
+};
 use tracing::{debug, error, instrument};
 use uuid::Uuid;
 
@@ -109,6 +112,30 @@ impl TaskRepository for SeaOrmTaskRepository {
             .await
             .map_err(|err| {
                 error!(error = %err, "Failed to find tasks by column ID");
+                ApplicationError::DatabaseError(err)
+            })?;
+
+        Ok(result.into_iter().map(Self::to_domain).collect())
+    }
+
+    #[instrument(
+        name = "db.task.find_by_board_id",
+        skip(self, board_id),
+        fields(
+            db.operation = "select",
+            board.id = %board_id
+        ),
+        err
+    )]
+    async fn find_by_board_id(&self, board_id: Uuid) -> Result<Vec<Task>, ApplicationError> {
+        debug!("Finding tasks by board ID");
+        let result = TaskEntity::find()
+            .join(JoinType::InnerJoin, TaskRelation::Column.def())
+            .filter(ColumnColumn::BoardId.eq(board_id))
+            .all(&self.db)
+            .await
+            .map_err(|err| {
+                error!(error = %err, "Failed to find tasks by board ID");
                 ApplicationError::DatabaseError(err)
             })?;
 
