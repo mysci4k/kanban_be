@@ -29,6 +29,7 @@ use utoipa::{
         crate::presentation::http::board_controller::create_board,
         crate::presentation::http::board_controller::get_board,
         crate::presentation::http::board_controller::get_user_boards,
+        crate::presentation::http::board_controller::get_board_members,
         crate::presentation::http::board_controller::update_board,
         crate::presentation::http::board_controller::delete_board,
         crate::presentation::http::board_controller::remove_board_member,
