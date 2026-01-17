@@ -18,6 +18,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(create_task)
             .service(get_task)
             .service(get_column_tasks)
+            .service(get_board_tasks)
             .service(update_task)
             .service(move_task)
             .service(delete_task),
@@ -122,6 +123,43 @@ async fn get_column_tasks(
     let column_id = column_id.into_inner();
     let user_id = user_id.into_inner();
     let tasks = task_service.get_column_tasks(column_id, user_id).await?;
+
+    Ok(ApiResponse::Found {
+        message: "Tasks retrieved successfully".to_string(),
+        data: tasks,
+        page: None,
+        total_pages: None,
+    })
+}
+
+#[utoipa::path(
+    get,
+    description = "***PROTECTED ENDPOINT***\n\nRetrieves all tasks for a specific board across all columns, ordered by column and position. User must be a member of the board to access this endpoint.",
+    path = "/task/board/{boardId}",
+    params(
+        ("boardId" = Uuid, Path, description = "Unique identifier of the board")
+    ),
+    responses(
+        (status = 200, description = "OK - Tasks retrieved successfully", body = ApiResponseSchema<Vec<TaskDto>>),
+        (status = 401, description = "Unauthorized - No active session or session has expired", body = ApplicationErrorSchema),
+        (status = 403, description = "Forbidden - User doesn't have access to this board", body = ApplicationErrorSchema),
+        (status = 404, description = "Not Found - Board with the given ID not found", body = ApplicationErrorSchema),
+        (status = 500, description = "Internal Server Error - Failed to retrieve tasks", body = ApplicationErrorSchema)
+    ),
+    tag = "Task",
+    security(
+        ("session_cookie" = [])
+    )
+)]
+#[get("/board/{boardId}")]
+async fn get_board_tasks(
+    task_service: web::Data<Arc<TaskService>>,
+    board_id: web::Path<Uuid>,
+    user_id: web::ReqData<Uuid>,
+) -> Result<ApiResponse<Vec<TaskDto>>, ApplicationError> {
+    let board_id = board_id.into_inner();
+    let user_id = user_id.into_inner();
+    let tasks = task_service.get_board_tasks(board_id, user_id).await?;
 
     Ok(ApiResponse::Found {
         message: "Tasks retrieved successfully".to_string(),
