@@ -322,6 +322,48 @@ impl BoardService {
     }
 
     #[instrument(
+        name = "board.get_board_members",
+        skip(self, board_id, user_id),
+        fields(
+           board.id = %board_id,
+           user.id = %user_id
+        ),
+        err
+    )]
+    pub async fn get_board_members(
+        &self,
+        board_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Vec<BoardMemberDto>, ApplicationError> {
+        if self
+            .board_member_repository
+            .find_by_board_and_user_id(board_id, user_id)
+            .await?
+            .is_none()
+        {
+            warn!(
+                board.id = %board_id,
+                user.id = %user_id,
+                "Attempt to access board members without access to the board"
+            );
+            return Err(ApplicationError::Forbidden {
+                message: "You don't have access to this board".to_string(),
+            });
+        }
+
+        let board_members = self
+            .board_member_repository
+            .find_by_board_id(board_id)
+            .await?;
+
+        info!(board.id = %board_id, "Board members retrieved successfully");
+        Ok(board_members
+            .into_iter()
+            .map(BoardMemberDto::from_domain)
+            .collect())
+    }
+
+    #[instrument(
         name = "board.update_board_member_role",
         skip(self, dto, user_id),
         fields(
