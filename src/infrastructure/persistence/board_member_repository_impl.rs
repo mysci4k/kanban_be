@@ -74,6 +74,29 @@ impl BoardMemberRepository for SeaOrmBoardMemberRepository {
     }
 
     #[instrument(
+        name = "db.board_member.find_by_board_id",
+        skip(self, board_id),
+        fields(
+            db.operation = "select",
+            board.id = %board_id
+        ),
+        err
+    )]
+    async fn find_by_board_id(&self, board_id: Uuid) -> Result<Vec<BoardMember>, ApplicationError> {
+        debug!("Finding board members by board ID");
+        let results = BoardMemberEntity::find()
+            .filter(BoardMemberColumn::BoardId.eq(board_id))
+            .all(&self.db)
+            .await
+            .map_err(|err| {
+                error!(error = %err, "Failed to find board members by board ID");
+                ApplicationError::DatabaseError(err)
+            })?;
+
+        Ok(results.into_iter().map(Self::to_domain).collect())
+    }
+
+    #[instrument(
         name = "db.board_member.find_by_board_and_user_id",
         skip(self, board_id, user_id),
         fields(
