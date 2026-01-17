@@ -223,6 +223,48 @@ impl TaskService {
     }
 
     #[instrument(
+        name = "task.get_board_tasks",
+        skip(self, board_id, user_id),
+        fields(
+            board.id = %board_id,
+            user.id = %user_id
+        ),
+        err
+    )]
+    pub async fn get_board_tasks(
+        &self,
+        board_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Vec<TaskDto>, ApplicationError> {
+        if self
+            .board_member_repository
+            .find_by_board_and_user_id(board_id, user_id)
+            .await?
+            .is_none()
+        {
+            warn!(
+                board.id = %board_id,
+                user.id = %user_id,
+                "Attempt to access tasks without access to the board"
+            );
+            return Err(ApplicationError::Forbidden {
+                message: "You don't have access to this board".to_string(),
+            });
+        }
+
+        let mut tasks = self.task_repository.find_by_board_id(board_id).await?;
+
+        tasks.sort_by(|a, b| {
+            a.column_id
+                .cmp(&b.column_id)
+                .then_with(|| a.position.cmp(&b.position))
+        });
+
+        info!(task.count = %tasks.len(), "Board tasks retrieved successfully");
+        Ok(tasks.into_iter().map(TaskDto::from_domain).collect())
+    }
+
+    #[instrument(
         name = "task.update_task",
         skip(self, dto, task_id, user_id),
         fields(
