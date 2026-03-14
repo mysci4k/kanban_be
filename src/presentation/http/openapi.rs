@@ -102,7 +102,7 @@ use utoipa::{
     modifiers(&SecurityAddon),
     info(
         title = "Kanban Board API",
-        version = "0.1.0",
+        version = "0.1.1",
         description = "REST API backend for a Kanban application.",
         license(
             name = "MIT",
