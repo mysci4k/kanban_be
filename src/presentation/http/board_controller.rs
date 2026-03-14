@@ -20,6 +20,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         web::scope("/board")
             .service(create_board)
             .service(get_user_boards)
+            .service(get_board_members)
             .service(add_new_board_member)
             .service(update_board_member_role)
             .service(remove_board_member)
@@ -123,6 +124,43 @@ async fn get_user_boards(
     Ok(ApiResponse::Found {
         message: "Boards retrieved successfully".to_string(),
         data: boards,
+        page: None,
+        total_pages: None,
+    })
+}
+
+#[utoipa::path(
+    get,
+    description = "***PROTECTED ENDPOINT***\n\nRetrieves a list of all members of a specific board. Only board members can access this endpoint.",
+    path = "/board/{boardId}/members",
+    params(
+        ("boardId" = Uuid, Path, description = "Unique identifier of the board")
+    ),
+    responses(
+        (status = 200, description = "OK - Board members retrieved successfully", body = ApiResponseSchema<Vec<BoardMemberDto>>),
+        (status = 401, description = "Unauthorized - No active session or session has expired", body = ApplicationErrorSchema),
+        (status = 403, description = "Forbidden - User doesn't have access to this board", body = ApplicationErrorSchema),
+        (status = 404, description = "Not found - Board with the given ID not found", body = ApplicationErrorSchema),
+        (status = 500, description = "Internal server error - Failed to retrieve board members", body = ApplicationErrorSchema)
+    ),
+    tag = "Board",
+    security(
+        ("session_cookie" = [])
+    )
+)]
+#[get("/{boardId}/members")]
+async fn get_board_members(
+    board_service: web::Data<Arc<BoardService>>,
+    board_id: web::Path<Uuid>,
+    user_id: web::ReqData<Uuid>,
+) -> Result<ApiResponse<Vec<BoardMemberDto>>, ApplicationError> {
+    let board_id = board_id.into_inner();
+    let user_id = user_id.into_inner();
+    let members = board_service.get_board_members(board_id, user_id).await?;
+
+    Ok(ApiResponse::Found {
+        message: "Board members retrieved successfully".to_string(),
+        data: members,
         page: None,
         total_pages: None,
     })

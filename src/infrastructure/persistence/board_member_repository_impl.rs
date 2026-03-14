@@ -12,6 +12,7 @@ use sea_orm::{
     FromQueryResult, QueryFilter,
 };
 use sea_query::{Alias, Expr, ExprTrait, Query};
+use tracing::{debug, error, instrument};
 use uuid::Uuid;
 
 pub struct SeaOrmBoardMemberRepository {
@@ -48,53 +49,129 @@ impl SeaOrmBoardMemberRepository {
 
 #[async_trait]
 impl BoardMemberRepository for SeaOrmBoardMemberRepository {
+    #[instrument(
+        name = "db.board_member.create",
+        skip(self, board_member),
+        fields(
+            db.operation = "insert",
+            board_member.id = %board_member.id
+        ),
+        err
+    )]
     async fn create(&self, board_member: BoardMember) -> Result<BoardMember, ApplicationError> {
+        debug!("Creating board member");
         let active_model = Self::to_active_model(board_member);
 
         let result = BoardMemberEntity::insert(active_model)
             .exec_with_returning(&self.db)
             .await
-            .map_err(ApplicationError::DatabaseError)?;
+            .map_err(|err| {
+                error!(error = %err, "Failed to create board member");
+                ApplicationError::DatabaseError(err)
+            })?;
 
         Ok(Self::to_domain(result))
     }
 
+    #[instrument(
+        name = "db.board_member.find_by_board_id",
+        skip(self, board_id),
+        fields(
+            db.operation = "select",
+            board.id = %board_id
+        ),
+        err
+    )]
+    async fn find_by_board_id(&self, board_id: Uuid) -> Result<Vec<BoardMember>, ApplicationError> {
+        debug!("Finding board members by board ID");
+        let results = BoardMemberEntity::find()
+            .filter(BoardMemberColumn::BoardId.eq(board_id))
+            .all(&self.db)
+            .await
+            .map_err(|err| {
+                error!(error = %err, "Failed to find board members by board ID");
+                ApplicationError::DatabaseError(err)
+            })?;
+
+        Ok(results.into_iter().map(Self::to_domain).collect())
+    }
+
+    #[instrument(
+        name = "db.board_member.find_by_board_and_user_id",
+        skip(self, board_id, user_id),
+        fields(
+            db.operation = "select",
+            board.id = %board_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     async fn find_by_board_and_user_id(
         &self,
         board_id: Uuid,
         user_id: Uuid,
     ) -> Result<Option<BoardMember>, ApplicationError> {
+        debug!("Finding board member by board and user ID");
         let result = BoardMemberEntity::find()
             .filter(BoardMemberColumn::BoardId.eq(board_id))
             .filter(BoardMemberColumn::UserId.eq(user_id))
             .one(&self.db)
             .await
-            .map_err(ApplicationError::DatabaseError)?;
+            .map_err(|err| {
+                error!(error = %err, "Failed to find board member by board and user ID");
+                ApplicationError::DatabaseError(err)
+            })?;
 
         Ok(result.map(Self::to_domain))
     }
 
+    #[instrument(
+        name = "db.board_member.get_role",
+        skip(self, board_id, user_id),
+        fields(
+            db.operation = "select",
+            board.id = %board_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     async fn get_role(
         &self,
         board_id: Uuid,
         user_id: Uuid,
     ) -> Result<Option<BoardMemberRoleEnum>, ApplicationError> {
+        debug!("Getting board member role by board and user ID");
         let result = BoardMemberEntity::find()
             .filter(BoardMemberColumn::BoardId.eq(board_id))
             .filter(BoardMemberColumn::UserId.eq(user_id))
             .one(&self.db)
             .await
-            .map_err(ApplicationError::DatabaseError)?;
+            .map_err(|err| {
+                error!(error = %err, "Failed to get board member role by board and user ID");
+                ApplicationError::DatabaseError(err)
+            })?;
 
         Ok(result.map(|m| m.role))
     }
 
+    #[instrument(
+        name = "db.board_member.check_permissions",
+        skip(self, board_id, user_id, member_roles),
+        fields(
+            db.operation = "select",
+            board.id = %board_id,
+            user.id = %user_id,
+            required_roles = ?member_roles
+        ),
+        err
+    )]
     async fn check_permissions(
         &self,
         board_id: Uuid,
         user_id: Uuid,
         member_roles: Vec<BoardMemberRoleEnum>,
     ) -> Result<bool, ApplicationError> {
+        debug!("Checking board member permissions");
         #[derive(FromQueryResult)]
         struct PermissionCheck {
             board_exists: bool,
@@ -136,8 +213,12 @@ impl BoardMemberRepository for SeaOrmBoardMemberRepository {
         let result = PermissionCheck::find_by_statement(statement)
             .one(&self.db)
             .await
-            .map_err(ApplicationError::DatabaseError)?
+            .map_err(|err| {
+                error!(error = %err, "Failed to check board member permissions");
+                ApplicationError::DatabaseError(err)
+            })?
             .ok_or_else(|| {
+                error!("Permission check query returned no results");
                 ApplicationError::DatabaseError(DbErr::RecordNotFound(
                     "Query returned no results".to_string(),
                 ))
@@ -152,24 +233,51 @@ impl BoardMemberRepository for SeaOrmBoardMemberRepository {
         Ok(result.has_permission)
     }
 
+    #[instrument(
+        name = "db.board_member.update",
+        skip(self, board_member),
+        fields(
+            db.operation = "update",
+            board_member.id = %board_member.id
+        ),
+        err
+    )]
     async fn update(&self, board_member: BoardMember) -> Result<BoardMember, ApplicationError> {
+        debug!("Updating board member");
         let active_model = Self::to_active_model(board_member);
 
         let result = BoardMemberEntity::update(active_model)
             .exec(&self.db)
             .await
-            .map_err(ApplicationError::DatabaseError)?;
+            .map_err(|err| {
+                error!(error = %err, "Failed to update board member");
+                ApplicationError::DatabaseError(err)
+            })?;
 
         Ok(Self::to_domain(result))
     }
 
+    #[instrument(
+        name = "db.board_member.delete",
+        skip(self, board_id, user_id),
+        fields(
+            db.operation = "delete",
+            board.id = %board_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     async fn delete(&self, board_id: Uuid, user_id: Uuid) -> Result<u64, ApplicationError> {
+        debug!("Deleting board member");
         let result = BoardMemberEntity::delete_many()
             .filter(BoardMemberColumn::BoardId.eq(board_id))
             .filter(BoardMemberColumn::UserId.eq(user_id))
             .exec(&self.db)
             .await
-            .map_err(ApplicationError::DatabaseError)?;
+            .map_err(|err| {
+                error!(error = %err, "Failed to delete board member");
+                ApplicationError::DatabaseError(err)
+            })?;
 
         Ok(result.rows_affected)
     }

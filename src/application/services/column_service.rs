@@ -12,6 +12,7 @@ use crate::{
 use chrono::Utc;
 use entity::BoardMemberRoleEnum;
 use std::sync::Arc;
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -34,6 +35,15 @@ impl ColumnService {
         }
     }
 
+    #[instrument(
+        name = "column.create_column",
+        skip(self, dto, user_id),
+        fields(
+            column.board_id = %dto.board_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn create_column(
         &self,
         dto: CreateColumnDto,
@@ -50,6 +60,11 @@ impl ColumnService {
             )
             .await?
         {
+            warn!(
+                column.board_id = %dto.board_id,
+                user.id = %user_id,
+                "Attempt to create column without sufficient permissions"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have permission to perform this action".to_string(),
             });
@@ -93,9 +108,19 @@ impl ColumnService {
             )
             .await;
 
+        info!(column.id = %saved_column.id, "Column created successfully");
         Ok(ColumnDto::from_domain(saved_column))
     }
 
+    #[instrument(
+        name = "column.get_column_by_id",
+        skip(self, column_id, user_id),
+        fields(
+            column.id = %column_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn get_column_by_id(
         &self,
         column_id: Uuid,
@@ -115,14 +140,29 @@ impl ColumnService {
             .await?
             .is_none()
         {
+            warn!(
+                column.id = %column_id,
+                user.id = %user_id,
+                "Attempt to access column without sufficient permissions"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
         }
 
+        info!(column.id = %column_id, "Column retrieved successfully");
         Ok(ColumnDto::from_domain(column))
     }
 
+    #[instrument(
+        name = "column.get_board_columns",
+        skip(self, board_id, user_id),
+        fields(
+            board.id = %board_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn get_board_columns(
         &self,
         board_id: Uuid,
@@ -134,6 +174,11 @@ impl ColumnService {
             .await?
             .is_none()
         {
+            warn!(
+                board.id = %board_id,
+                user.id = %user_id,
+                "Attempt to access board columns without sufficient permissions"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have access to this board".to_string(),
             });
@@ -143,9 +188,19 @@ impl ColumnService {
 
         columns.sort_by(|a, b| a.position.cmp(&b.position));
 
+        info!(column.count = %columns.len(), "Board columns retrieved successfully");
         Ok(columns.into_iter().map(ColumnDto::from_domain).collect())
     }
 
+    #[instrument(
+        name = "column.update_column",
+        skip(self, dto, column_id, user_id),
+        fields(
+            column.id = %column_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn update_column(
         &self,
         dto: UpdateColumnDto,
@@ -171,6 +226,11 @@ impl ColumnService {
             )
             .await?
         {
+            warn!(
+                column.id = %column_id,
+                user.id = %user_id,
+                "Attempt to update column without sufficient permissions"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have permission to perform this action".to_string(),
             });
@@ -195,9 +255,19 @@ impl ColumnService {
             )
             .await;
 
+        info!(column.id = %column_id, "Column updated successfully");
         Ok(ColumnDto::from_domain(updated_column))
     }
 
+    #[instrument(
+        name = "column.move_column",
+        skip(self, target_position, column_id, user_id),
+        fields(
+            column.id = %column_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn move_column(
         &self,
         target_position: usize,
@@ -221,6 +291,11 @@ impl ColumnService {
             )
             .await?
         {
+            warn!(
+                column.id = %column_id,
+                user.id = %user_id,
+                "Attempt to move column without sufficient permissions"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have permission to perform this action".to_string(),
             });
@@ -284,9 +359,19 @@ impl ColumnService {
             )
             .await;
 
+        info!(column.id = %column_id, "Column moved successfully");
         Ok(ColumnDto::from_domain(saved_column))
     }
 
+    #[instrument(
+        name = "column.delete_column",
+        skip(self, column_id, user_id),
+        fields(
+            column.id = %column_id,
+            user.id = %user_id
+        ),
+        err
+    )]
     pub async fn delete_column(
         &self,
         column_id: Uuid,
@@ -309,6 +394,11 @@ impl ColumnService {
             )
             .await?
         {
+            warn!(
+                column.id = %column_id,
+                user.id = %user_id,
+                "Attempt to delete column without sufficient permissions"
+            );
             return Err(ApplicationError::Forbidden {
                 message: "You don't have permission to perform this action".to_string(),
             });
@@ -327,6 +417,7 @@ impl ColumnService {
             )
             .await;
 
+        info!(column.id = %column_id, "Column deleted successfully");
         Ok(deleted_column)
     }
 }

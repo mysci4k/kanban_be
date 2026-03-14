@@ -12,6 +12,14 @@ pub static SERVER_PORT: LazyLock<u16> = LazyLock::new(|| {
         .expect("SERVER_PORT must be a valid u16 number")
 });
 
+// Scalar configuration constants
+pub static ENABLED_SCALAR: LazyLock<bool> = LazyLock::new(|| {
+    env::var("ENABLED_SCALAR")
+        .unwrap_or("false".to_string())
+        .parse()
+        .expect("ENABLED_SCALAR must be a valid boolean")
+});
+
 // Database configuration constants
 pub static DATABASE_URL: LazyLock<String> =
     LazyLock::new(|| env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable"));
@@ -55,8 +63,19 @@ pub static FROM_EMAIL: LazyLock<String> =
 pub static BASE_URL: LazyLock<String> =
     LazyLock::new(|| env::var("BASE_URL").expect("Missing BASE_URL environment variable"));
 
+// Tracing configuration constants
+pub static OTLP_ENDPOINT: LazyLock<Option<String>> =
+    LazyLock::new(|| env::var("OTLP_ENDPOINT").ok());
+
+pub static OTLP_SERVICE_NAME: LazyLock<String> =
+    LazyLock::new(|| env::var("OTLP_SERVICE_NAME").unwrap_or("kanban_api".to_string()));
+
+pub static OTLP_SAMPLING_RATIO: LazyLock<f64> = LazyLock::new(|| {
+    env::var("OTLP_SAMPLING_RATIO")
+        .unwrap_or("1.0".to_string())
+        .parse()
+        .expect("SAMPLING_RATIO must be a valid f64 number")
+});
+
 // Regular expressions for validation
 pub static RE_ONLY_LETTERS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\p{L}+$").unwrap());
-
-pub static RE_SPECIAL_CHARS: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^.*?[@$!%*?&].*$").unwrap());

@@ -9,6 +9,7 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 use tera::{Context, Tera};
+use tracing::{debug, error, instrument};
 
 pub struct SmtpEmailService {
     smtp_transport: AsyncSmtpTransport<Tokio1Executor>,
@@ -63,6 +64,22 @@ impl SmtpEmailService {
         context
     }
 
+    #[instrument(
+        name = "email.send_templated_email",
+        skip(
+            self,
+            to_email,
+            subject,
+            html_template,
+            text_template,
+            context
+        ),
+        fields(
+            email.to = %to_email,
+            email.template = %html_template
+        ),
+        err
+    )]
     async fn send_templated_email(
         &self,
         to_email: &str,
@@ -71,25 +88,26 @@ impl SmtpEmailService {
         text_template: &str,
         context: &Context,
     ) -> Result<(), String> {
-        let html_body = self
-            .tera
-            .render(html_template, context)
-            .map_err(|err| format!("Failed to render HTML template: {}", err))?;
+        debug!("Sending templated email");
+        let html_body = self.tera.render(html_template, context).map_err(|err| {
+            error!(error = %err, "Failed to render HTML template");
+            format!("Failed to render HTML template: {}", err)
+        })?;
 
-        let text_body = self
-            .tera
-            .render(text_template, context)
-            .map_err(|err| format!("Failed to render text template: {}", err))?;
+        let text_body = self.tera.render(text_template, context).map_err(|err| {
+            error!(error = %err, "Failed to render text template");
+            format!("Failed to render text template: {}", err)
+        })?;
 
         let email = Message::builder()
-            .from(
-                self.from_email
-                    .parse()
-                    .map_err(|err| format!("Invalid from email: {}", err))?,
-            )
-            .to(to_email
-                .parse()
-                .map_err(|err| format!("Invalid to email: {}", err))?)
+            .from(self.from_email.parse().map_err(|err| {
+                error!(error = %err, "Invalid from email");
+                format!("Invalid from email: {}", err)
+            })?)
+            .to(to_email.parse().map_err(|err| {
+                error!(error = %err, "Invalid to email");
+                format!("Invalid to email: {}", err)
+            })?)
             .subject(subject)
             .multipart(
                 MultiPart::alternative()
@@ -104,12 +122,15 @@ impl SmtpEmailService {
                             .body(html_body),
                     ),
             )
-            .map_err(|err| format!("Failed to build email: {}", err))?;
+            .map_err(|err| {
+                error!(error = %err, "Failed to build email");
+                format!("Failed to build email: {}", err)
+            })?;
 
-        self.smtp_transport
-            .send(email)
-            .await
-            .map_err(|err| format!("Failed to send email: {}", err))?;
+        self.smtp_transport.send(email).await.map_err(|err| {
+            error!(error = %err, "Failed to send email");
+            format!("Failed to send email: {}", err)
+        })?;
 
         Ok(())
     }
@@ -117,7 +138,14 @@ impl SmtpEmailService {
 
 #[async_trait]
 impl EmailService for SmtpEmailService {
+    #[instrument(
+        name = "email.send_email",
+        skip(self, to_email, template),
+        fields(email.to = %to_email),
+        err
+    )]
     async fn send_email(&self, to_email: &str, template: EmailTemplate) -> Result<(), String> {
+        debug!("Preparing to send email");
         let context = self.build_context(&template);
         let (html_template, text_template) = template.template_name();
         let subject = template.subject();
@@ -126,6 +154,15 @@ impl EmailService for SmtpEmailService {
             .await
     }
 
+    #[instrument(
+        name = "email.send_activation_email",
+        skip(self, to_email, username, user_id, activation_token),
+        fields(
+            email.to = %to_email,
+            user_id = %user_id
+        ),
+        err
+    )]
     async fn send_activation_email(
         &self,
         to_email: &str,
@@ -133,6 +170,7 @@ impl EmailService for SmtpEmailService {
         user_id: &str,
         activation_token: &str,
     ) -> Result<(), String> {
+        debug!("Preparing activation email template");
         let activation_link = format!(
             "{}/activate?userId={}&token={}",
             self.base_url, user_id, activation_token
@@ -146,6 +184,15 @@ impl EmailService for SmtpEmailService {
         self.send_email(to_email, template).await
     }
 
+    #[instrument(
+        name = "email.send_password_reset_email",
+        skip(self, to_email, username, user_id, reset_token),
+        fields(
+            email.to = %to_email,
+            user_id = %user_id
+        ),
+        err
+    )]
     async fn send_password_reset_email(
         &self,
         to_email: &str,
@@ -153,6 +200,7 @@ impl EmailService for SmtpEmailService {
         user_id: &str,
         reset_token: &str,
     ) -> Result<(), String> {
+        debug!("Preparing password reset email template");
         let reset_link = format!(
             "{}/reset-password?userId={}&token={}",
             self.base_url, user_id, reset_token
